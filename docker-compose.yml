@@ -1,0 +1,16 @@
+services:
+  porthole:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    image: nobuomiura/porthole:latest
+    container_name: porthole
+    ports:
+      - "${PORT:-8080}:8080"
+    environment:
+      PORT: "8080"
+      HISTORY_SIZE: "${HISTORY_SIZE:-50}"
+    restart: unless-stopped
+    # Uncomment to test services running on the Docker host:
+    # extra_hosts:
+    #   - "host.docker.internal:host-gateway"

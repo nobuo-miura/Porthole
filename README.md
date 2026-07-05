@@ -1,9 +1,11 @@
 # Porthole
 
+[English](README.md) | [日本語](README.ja.md)
+
 A lightweight, web-based connection testing tool that runs in Docker.
 Quickly verify reachability and authentication of databases, caches, message queues, and arbitrary TCP/UDP ports — all from your browser.
 
-![Go](https://img.shields.io/badge/Go-1.24-blue) ![Docker](https://img.shields.io/badge/Docker-ready-blue) ![License](https://img.shields.io/badge/license-MIT-green)
+![Go](https://img.shields.io/badge/Go-1.26.1-blue) ![Docker](https://img.shields.io/badge/Docker-ready-blue) ![License](https://img.shields.io/badge/license-MIT-green)
 
 ![Porthole screenshot](docs/screenshot.png)
 
@@ -24,13 +26,13 @@ Quickly verify reachability and authentication of databases, caches, message que
 
 ## Quick Start
 
-### Docker Hub から起動（推奨）
+### Run from Docker Hub (recommended)
 
 ```bash
 docker run -p 8080:8080 nobuomiura/porthole:latest
 ```
 
-### docker compose でビルドして起動
+### Build and run with Docker Compose
 
 ```bash
 docker compose up --build
@@ -63,7 +65,7 @@ go run .
 make run
 ```
 
-Requires Go 1.22+.
+Requires Go 1.26.1+.
 
 ## API
 

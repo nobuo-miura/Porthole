@@ -66,6 +66,7 @@ function buildRequest() {
     req.port = parseInt(get('port_elasticsearch')) || 9200;
     req.username = get('username_elasticsearch');
     req.password = get('password_elasticsearch');
+    req.ssl_mode = get('ssl_mode_elasticsearch');
   } else if (type === 'rabbitmq') {
     req.uri = get('uri_rabbitmq');
     req.host = get('host_rabbitmq');
@@ -88,15 +89,46 @@ function buildRequest() {
   return req;
 }
 
+// Visual treatment per outcome.
+// 'indeterminate' is deliberately neither green nor red: UDP with no reply proves
+// nothing either way, and showing it as OK or FAIL would both be misleading.
+const OUTCOME_STYLES = {
+  ok: {
+    border: 'border-green-700',
+    badge: 'bg-green-900 text-green-300',
+    label: 'OK',
+    detailText: 'text-green-300',
+    icon: `<svg class="w-5 h-5 text-green-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>`,
+  },
+  failed: {
+    border: 'border-red-800',
+    badge: 'bg-red-900 text-red-300',
+    label: 'FAIL',
+    detailText: 'text-green-300',
+    icon: `<svg class="w-5 h-5 text-red-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>`,
+  },
+  indeterminate: {
+    border: 'border-yellow-700',
+    badge: 'bg-yellow-900 text-yellow-300',
+    label: 'UNKNOWN',
+    detailText: 'text-yellow-300',
+    icon: `<svg class="w-5 h-5 text-yellow-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 1.775-2 3.222-2 1.907 0 3.45 1.343 3.45 3 0 1.4-1.1 2.575-2.59 2.907-.465.104-.81.514-.81.99V14m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>`,
+  },
+};
+
+function outcomeStyle(result) {
+  // outcome を返さない古いレスポンスにも耐えるよう success から補完する。
+  const outcome = result.outcome || (result.success ? 'ok' : 'failed');
+  return OUTCOME_STYLES[outcome] || OUTCOME_STYLES.failed;
+}
+
 // Render a result card
 function renderResult(result, compact = false) {
-  const ok = result.success;
-  const borderColor = ok ? 'border-green-700' : 'border-red-800';
-  const badgeBg = ok ? 'bg-green-900 text-green-300' : 'bg-red-900 text-red-300';
-  const badgeText = ok ? 'OK' : 'FAIL';
-  const icon = ok
-    ? `<svg class="w-5 h-5 text-green-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>`
-    : `<svg class="w-5 h-5 text-red-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>`;
+  const style = outcomeStyle(result);
+  const borderColor = style.border;
+  const badgeBg = style.badge;
+  const badgeText = style.label;
+  const icon = style.icon;
 
   const target = result.host
     ? `${result.host}${result.port ? ':' + result.port : ''}`
@@ -125,7 +157,7 @@ function renderResult(result, compact = false) {
             <span class="font-mono text-sm text-gray-200">${escHtml(target)}</span>
             <span class="text-xs text-gray-500 ml-auto">${result.latency_ms}ms</span>
           </div>
-          ${result.detail ? `<p class="text-sm text-green-300 mt-1">${escHtml(result.detail)}</p>` : ''}
+          ${result.detail ? `<p class="text-sm ${style.detailText} mt-1">${escHtml(result.detail)}</p>` : ''}
           ${result.error ? `<p class="text-sm text-red-400 mt-1 font-mono">${escHtml(result.error)}</p>` : ''}
         </div>
       </div>
@@ -243,10 +275,10 @@ function refreshHistory() {
     return;
   }
   historyList.innerHTML = localHistory.map(r => {
-    const ok = r.success;
-    const dot = ok
-      ? '<span class="w-2 h-2 rounded-full bg-green-500 inline-block shrink-0"></span>'
-      : '<span class="w-2 h-2 rounded-full bg-red-500 inline-block shrink-0"></span>';
+    const outcome = r.outcome || (r.success ? 'ok' : 'failed');
+    const dotColor =
+      outcome === 'ok' ? 'bg-green-500' : outcome === 'indeterminate' ? 'bg-yellow-500' : 'bg-red-500';
+    const dot = `<span class="w-2 h-2 rounded-full ${dotColor} inline-block shrink-0"></span>`;
     const target = r.host ? `${r.host}${r.port ? ':' + r.port : ''}` : '';
     const time = r.checked_at ? new Date(r.checked_at).toLocaleTimeString() : '';
     return `

@@ -31,3 +31,8 @@ go.work.sum
 # Build output (project binary)
 porthole
 porthole.exe
+
+# Node artifacts from `make tailwind` (the generated web/tailwind.css IS committed)
+node_modules/
+package.json
+package-lock.json

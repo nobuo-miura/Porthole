@@ -13,11 +13,7 @@ type SMTPChecker struct{}
 func (c *SMTPChecker) Check(ctx context.Context, req CheckRequest) CheckResult {
 	return Run(ctx, req, func(ctx context.Context) (string, error) {
 		host := req.Host
-		port := req.Port
-		if port == 0 {
-			port = 25
-		}
-		addr := fmt.Sprintf("%s:%d", host, port)
+		addr := req.Addr(25)
 
 		// Use DialContext for proper context cancellation
 		deadline, ok := ctx.Deadline()

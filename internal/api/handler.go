@@ -16,15 +16,26 @@ type History struct {
 	max     int
 }
 
+// NewHistory は最大 max 件を保持する履歴を返す。
+// max が 0 以下の場合は履歴を無効化する（何も記録しない）。
 func NewHistory(max int) *History {
+	if max < 0 {
+		max = 0
+	}
 	return &History{max: max, results: make([]checker.CheckResult, 0, max)}
 }
 
+// Add は結果を追記し、max を超えた分だけ古いものを捨てる。
 func (h *History) Add(r checker.CheckResult) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
+	if h.max == 0 {
+		return
+	}
 	if len(h.results) >= h.max {
-		h.results = h.results[1:]
+		// 先頭を詰めて再利用する。h.results[1:] で切り詰めると
+		// 元配列の先頭が伸び続け、append ごとに再確保が発生する。
+		h.results = append(h.results[:0], h.results[len(h.results)-h.max+1:]...)
 	}
 	h.results = append(h.results, r)
 }
@@ -40,11 +51,16 @@ func (h *History) All() []checker.CheckResult {
 // Handler wires all HTTP routes.
 type Handler struct {
 	history *History
+	version string
 	mux     *http.ServeMux
 }
 
-func New(history *History) *Handler {
-	h := &Handler{history: history, mux: http.NewServeMux()}
+// New はルーティング済みの Handler を返す。version は /healthz で報告される。
+func New(history *History, version string) *Handler {
+	if version == "" {
+		version = "dev"
+	}
+	h := &Handler{history: history, version: version, mux: http.NewServeMux()}
 	h.mux.HandleFunc("POST /api/check", h.handleCheck)
 	h.mux.HandleFunc("POST /api/check/batch", h.handleBatch)
 	h.mux.HandleFunc("GET /api/history", h.handleHistory)
@@ -59,7 +75,8 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 func writeJSON(w http.ResponseWriter, status int, v any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
-	json.NewEncoder(w).Encode(v)
+	// ステータス送出後なのでエンコード失敗を伝える手段はない（クライアント切断など）。
+	_ = json.NewEncoder(w).Encode(v)
 }
 
 func (h *Handler) handleCheck(w http.ResponseWriter, r *http.Request) {
@@ -105,6 +122,7 @@ func (h *Handler) handleBatch(w http.ResponseWriter, r *http.Request) {
 					Host:      req.Host,
 					Port:      req.Port,
 					Success:   false,
+					Outcome:   checker.OutcomeFailed,
 					Error:     err.Error(),
 					CheckedAt: time.Now(),
 				}
@@ -127,5 +145,5 @@ func (h *Handler) handleHistory(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) handleHealth(w http.ResponseWriter, r *http.Request) {
-	writeJSON(w, http.StatusOK, map[string]string{"status": "ok", "version": "1.0.0"})
+	writeJSON(w, http.StatusOK, map[string]string{"status": "ok", "version": h.version})
 }

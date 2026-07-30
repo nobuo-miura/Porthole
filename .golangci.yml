@@ -1,0 +1,29 @@
+version: "2"
+
+linters:
+  default: standard
+  enable:
+    - bodyclose
+    - misspell
+  settings:
+    errcheck:
+      # Errors from teardown-path Close/Disconnect calls carry no actionable
+      # information for a connection-probing tool. Everything else must be handled.
+      exclude-functions:
+        - (net.Conn).Close
+        - (io.ReadCloser).Close
+        - (*database/sql.DB).Close
+        - (*net/smtp.Client).Close
+        # go-redis の Close は埋め込まれた非公開型に定義されているため、
+        # Client ではなく baseClient を指定する必要がある。
+        - (*github.com/redis/go-redis/v9.baseClient).Close
+        - (*github.com/rabbitmq/amqp091-go.Connection).Close
+        - (*go.mongodb.org/mongo-driver/v2/mongo.Client).Disconnect
+
+formatters:
+  enable:
+    - gofmt
+
+issues:
+  max-issues-per-linter: 0
+  max-same-issues: 0

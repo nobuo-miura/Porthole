@@ -1,0 +1,132 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+# 同じブランチへの連続 push では古い実行を打ち切る。
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Build & Test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Go
+        uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+
+      # Makefile のターゲットを呼ぶことで、`make check` と CI が乖離しないようにする。
+      - name: Verify go.mod is tidy
+        run: make tidy-check
+
+      - name: Check formatting
+        run: make fmt-check
+
+      - name: Build
+        run: go build ./...
+
+      - name: Vet
+        run: go vet ./...
+
+      - name: Test
+        run: go test -race -coverprofile=coverage.out -covermode=atomic ./...
+
+      - name: Coverage summary
+        run: go tool cover -func=coverage.out | tail -1 >> "$GITHUB_STEP_SUMMARY"
+
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Go
+        uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v9
+        with:
+          # .golangci.yml の version キーと合わせて手動で更新する
+          # （Dependabot はこの入力値までは追随しない）。
+          version: v2.12.2
+
+  # web/tailwind.css はコミット済みなので、マークアップだけ編集して
+  # 再生成を忘れると本番UIが古いCSSのまま出る。それを検出する。
+  # Go のテストを npm レジストリ障害に巻き込まないよう独立したジョブにしている。
+  css:
+    name: Tailwind CSS is up to date
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Regenerate CSS and fail if the committed file differs
+        run: make tailwind-check
+
+  docker:
+    name: Docker build & smoke test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      # リリースは Docker イメージ経由なので、タグを打つ前にここで壊れを検出する。
+      - name: Build image
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: docker/Dockerfile
+          load: true
+          tags: porthole:ci
+          build-args: |
+            VERSION=ci-${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Smoke test /healthz and version embedding
+        run: |
+          set -euo pipefail
+          docker run -d --name porthole-ci -p 8080:8080 porthole:ci
+
+          for _ in $(seq 1 30); do
+            if curl -fsS http://localhost:8080/healthz >/dev/null 2>&1; then
+              break
+            fi
+            sleep 1
+          done
+
+          body=$(curl -fsS http://localhost:8080/healthz)
+          echo "healthz: $body"
+
+          expected="ci-${{ github.sha }}"
+          if ! printf '%s' "$body" | grep -q "\"version\":\"$expected\""; then
+            echo "::error::version was not embedded in the binary; expected $expected in $body"
+            docker logs porthole-ci
+            exit 1
+          fi
+
+      - name: Container logs
+        if: always()
+        run: docker logs porthole-ci || true
+
+      - name: Tear down
+        if: always()
+        run: docker rm -f porthole-ci || true

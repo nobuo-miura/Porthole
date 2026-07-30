@@ -1,0 +1,48 @@
+{
+  "family": "porthole",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "256",
+  "memory": "512",
+  "executionRoleArn": "arn:aws:iam::<ACCOUNT_ID>:role/ecsTaskExecutionRole",
+  "taskRoleArn": "arn:aws:iam::<ACCOUNT_ID>:role/<TASK_ROLE_WITH_SSMMESSAGES>",
+  "runtimePlatform": {
+    "cpuArchitecture": "X86_64",
+    "operatingSystemFamily": "LINUX"
+  },
+  "containerDefinitions": [
+    {
+      "name": "porthole",
+      "image": "nobuomiura/porthole:latest",
+      "essential": true,
+      "portMappings": [
+        {
+          "containerPort": 8080,
+          "protocol": "tcp"
+        }
+      ],
+      "environment": [
+        {
+          "name": "PORT",
+          "value": "8080"
+        },
+        {
+          "name": "HISTORY_SIZE",
+          "value": "50"
+        }
+      ],
+      "readonlyRootFilesystem": false,
+      "linuxParameters": {
+        "initProcessEnabled": true
+      },
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/porthole",
+          "awslogs-region": "<REGION>",
+          "awslogs-stream-prefix": "porthole"
+        }
+      }
+    }
+  ]
+}

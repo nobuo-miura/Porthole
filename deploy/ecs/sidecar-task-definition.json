@@ -1,0 +1,61 @@
+{
+  "family": "my-app-with-porthole",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "512",
+  "memory": "1024",
+  "executionRoleArn": "arn:aws:iam::<ACCOUNT_ID>:role/ecsTaskExecutionRole",
+  "taskRoleArn": "arn:aws:iam::<ACCOUNT_ID>:role/<TASK_ROLE_WITH_SSMMESSAGES>",
+  "runtimePlatform": {
+    "cpuArchitecture": "X86_64",
+    "operatingSystemFamily": "LINUX"
+  },
+  "containerDefinitions": [
+    {
+      "name": "app",
+      "image": "<YOUR_APP_IMAGE>",
+      "essential": true,
+      "portMappings": [
+        {
+          "containerPort": 8080,
+          "protocol": "tcp"
+        }
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/my-app",
+          "awslogs-region": "<REGION>",
+          "awslogs-stream-prefix": "app"
+        }
+      }
+    },
+    {
+      "name": "porthole",
+      "image": "nobuomiura/porthole:latest",
+      "essential": false,
+      "environment": [
+        {
+          "name": "PORT",
+          "value": "8081"
+        },
+        {
+          "name": "HISTORY_SIZE",
+          "value": "50"
+        }
+      ],
+      "readonlyRootFilesystem": false,
+      "linuxParameters": {
+        "initProcessEnabled": true
+      },
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/my-app",
+          "awslogs-region": "<REGION>",
+          "awslogs-stream-prefix": "porthole"
+        }
+      }
+    }
+  ]
+}

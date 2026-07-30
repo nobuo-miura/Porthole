@@ -31,12 +31,3 @@ func Dispatch(ctx context.Context, req CheckRequest) (CheckResult, error) {
 	defer cancel()
 	return c.Check(ctx, req), nil
 }
-
-// SupportedTypes returns all registered checker type names.
-func SupportedTypes() []string {
-	types := make([]string, 0, len(registry))
-	for t := range registry {
-		types = append(types, t)
-	}
-	return types
-}

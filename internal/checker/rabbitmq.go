@@ -3,9 +3,37 @@ package checker
 import (
 	"context"
 	"fmt"
+	"net/url"
 
 	amqp "github.com/rabbitmq/amqp091-go"
 )
+
+// amqpURI は AMQP の接続URIを組み立てる。
+//
+// 以前は fmt.Sprintf("amqp://%s:%s@%s:%d/", user, pass, host, port) で連結していたため、
+// パスワードに "@" や "/" や ":" が含まれると URI の区切りと誤認され、接続先が
+// すり替わっていた。IPv6 アドレスも壊れていた。
+// url.URL 経由なら必要な部分だけがパーセントエンコードされる。
+func amqpURI(req CheckRequest) string {
+	// RabbitMQ の既定資格情報。未指定時の挙動は従来どおり。
+	user := req.Username
+	if user == "" {
+		user = "guest"
+	}
+	pass := req.Password
+	if pass == "" {
+		pass = "guest"
+	}
+
+	u := &url.URL{
+		Scheme: "amqp",
+		User:   url.UserPassword(user, pass),
+		Host:   req.Addr(5672),
+		Path:   "/",
+	}
+
+	return u.String()
+}
 
 type RabbitMQChecker struct{}
 
@@ -13,20 +41,7 @@ func (c *RabbitMQChecker) Check(ctx context.Context, req CheckRequest) CheckResu
 	return Run(ctx, req, func(ctx context.Context) (string, error) {
 		uri := req.URI
 		if uri == "" {
-			host := req.Host
-			port := req.Port
-			if port == 0 {
-				port = 5672
-			}
-			user := req.Username
-			if user == "" {
-				user = "guest"
-			}
-			pass := req.Password
-			if pass == "" {
-				pass = "guest"
-			}
-			uri = fmt.Sprintf("amqp://%s:%s@%s:%d/", user, pass, host, port)
+			uri = amqpURI(req)
 		}
 
 		// amqp091-go doesn't support context natively on Dial,

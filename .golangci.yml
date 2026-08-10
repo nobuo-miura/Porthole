@@ -14,8 +14,9 @@ linters:
         - (io.ReadCloser).Close
         - (*database/sql.DB).Close
         - (*net/smtp.Client).Close
-        # go-redis の Close は埋め込まれた非公開型に定義されているため、
-        # Client ではなく baseClient を指定する必要がある。
+        # go-redis の Close は v9.21.0 までは埋め込み型 baseClient に、
+        # v9.22.0 以降は Client 自体に定義されている。
+        - (*github.com/redis/go-redis/v9.Client).Close
         - (*github.com/redis/go-redis/v9.baseClient).Close
         - (*github.com/rabbitmq/amqp091-go.Connection).Close
         - (*go.mongodb.org/mongo-driver/v2/mongo.Client).Disconnect

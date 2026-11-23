@@ -3,12 +3,12 @@ module github.com/nobuo-miura/porthole
 go 1.26.1
 
 require (
-	github.com/go-sql-driver/mysql v1.10.1
+	github.com/go-sql-driver/mysql v1.10.2
 	github.com/lib/pq v1.12.3
-	github.com/microsoft/go-mssqldb v1.11.2
-	github.com/rabbitmq/amqp091-go v1.16.0
+	github.com/microsoft/go-mssqldb v1.12.0
+	github.com/rabbitmq/amqp091-go v1.17.0
 	github.com/redis/go-redis/v9 v9.23.0
-	go.mongodb.org/mongo-driver/v2 v2.9.3
+	go.mongodb.org/mongo-driver/v2 v2.10.1
 )
 
 require (
@@ -17,10 +17,9 @@ require (
 	github.com/golang-sql/civil v0.0.0-20220223132316-b832511892a9 // indirect
 	github.com/golang-sql/sqlexp v0.1.0 // indirect
 	github.com/google/uuid v1.6.0 // indirect
-	github.com/klauspost/compress v1.19.2 // indirect
+	github.com/klauspost/compress v1.20.3 // indirect
 	github.com/shopspring/decimal v1.4.0 // indirect
-	github.com/xdg-go/pbkdf2 v1.0.0 // indirect
-	github.com/xdg-go/scram v1.2.0 // indirect
+	github.com/xdg-go/scram v1.4.0 // indirect
 	github.com/xdg-go/stringprep v1.0.4 // indirect
 	github.com/youmark/pkcs8 v0.0.0-20240726163527-a2c0da244d78 // indirect
 	go.uber.org/atomic v1.12.0 // indirect
